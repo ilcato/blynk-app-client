@@ -11,17 +11,16 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ilcato/blynk-app-client.git"
+    "url": "git+https://github.com/ilcato/blynk-app-client.git"
   },
   "keywords": [
     "Blynk",
     "client",
     "app"
   ],
-  "dependencies": {
-  },
+  "dependencies": {},
   "author": "ilcato",
-  "license": "GPL2",
+  "license": "GPL-2.0",
   "bugs": {
     "url": "https://github.com/ilcato/blynk-app-client/issues"
   },

@@ -20,7 +20,7 @@
   ],
   "dependencies": {},
   "author": "ilcato",
-  "license": "GPL-2.0",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/ilcato/blynk-app-client/issues"
   },

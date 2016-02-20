@@ -1,0 +1,29 @@
+{
+  "name": "blynk-app-client",
+  "version": "0.0.1",
+  "description": "Node.js module for accessing Blynk server through the App interface",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ilcato/blynk-app-client.git"
+  },
+  "keywords": [
+    "Blynk",
+    "client",
+    "app"
+  ],
+  "dependencies": {
+  },
+  "author": "ilcato",
+  "license": "GPL2",
+  "bugs": {
+    "url": "https://github.com/ilcato/blynk-app-client/issues"
+  },
+  "homepage": "https://github.com/ilcato/blynk-app-client"
+}

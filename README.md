@@ -1,6 +1,8 @@
 # blynk-app-client
 Node.js module for accessing Blynk server through the App interface
 
+FIRST DRAFT
+
 # Use
 
 	var blynk = require("blynk-app-client").createClient("127.0.0.1", 8443);

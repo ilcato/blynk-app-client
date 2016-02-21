@@ -10,7 +10,7 @@
 const tls = require('tls');
 const fs = require('fs');
 const crypto = require('crypto');
-
+const HARDWARE_TIMEOUT = 10000;
 
 function BlynkAppClient(host, port) {
 	this.host = host;
@@ -84,7 +84,7 @@ BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, p
 			that.hardwareTimeout = setTimeout(function () {
 				reject("Hardware timeout");
 			}
-			, 10000);
+			, HARDWARE_TIMEOUT);
 		}
 	});
 	return p;

@@ -5,10 +5,43 @@ FIRST DRAFT
 
 # Sample usage
 
-	var blynk = require("blynk-app-client").createClient("127.0.0.1", 8443);
-	blynk.connect("username", "password")
+Creating a Dashboard programmatically:
+
+var blynk = require("./index.js").createClient("127.0.0.1", 8443);
+blynk.connect("USERNAME", "PASSWORD")
 	.then(function (status) {
-		return blynk.hardware("923968099", "d", "r", 4);
+		return blynk.deleteDashboard(101);	
+	})
+	.then(function (status) {
+		return blynk.createDashboard(101, "DashTest");	
+	})
+	.then(function (status) {
+		return blynk.createWidget(101, 1, 0, 0, "Button", "BUTTON", "DIGITAL", "5");	
+	})
+	.then(function (status) {
+		return blynk.createWidget(101, 2, 200, 200, "Display", "DIGIT4_DISPLAY", "DIGITAL", "4");	
+	})
+	.then(function (status) {
+		return blynk.getToken(101);
+	})
+	.then(function (token) {
+		console.log("Token: " + token);
+		process.exit();
+	})
+	.catch(function (error) {
+		console.log("Error: " + error);
+		process.exit();
+	});
+
+Reading and writing pins (after configuring hardware with the previous token):
+
+var blynk = require("./index.js").createClient("127.0.0.1", 8443);
+blynk.connect("USERNAME", "PASSWORD")
+	.then(function (status) {
+		return blynk.activate(101);
+	})
+	.then(function (status) {
+		return blynk.hardware(101, "d", "r", 4);
 	})
 	.then(function(fields) {
 		var dasBoardId = parseInt(fields[0]);
@@ -20,13 +53,15 @@ FIRST DRAFT
 		console.log("\t pinCommand: " + pinCommand);
 		console.log("\t pin: " + pin);
 		console.log("\t pinValue: " + pinValue);
-		return blynk.hardware("923968099", "d", "w", 5, 0);
+		return blynk.hardware(101, "d", "w", 5, 0);
 	})
 	.then(function(status) {
 		console.log("Hardware response: " + status);
+		process.exit();
 	})
 	.catch(function (error) {
 		console.log("Error: " + error);
+		process.exit();
 	});
 
 

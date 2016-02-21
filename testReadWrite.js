@@ -1,5 +1,5 @@
 var blynk = require("./index.js").createClient("127.0.0.1", 8443);
-blynk.connect("andrea.catozzi@gmail.com", "1tehran")
+blynk.connect("xxx", "xxx")
 	.then(function (status) {
 		return blynk.activate(101);
 	})

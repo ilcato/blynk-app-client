@@ -1,5 +1,5 @@
 var blynk = require("./index.js").createClient("127.0.0.1", 8443);
-blynk.connect("xxx", "xxx")
+blynk.connect("andrea.catozzi@gmail.com", "1tehran")
 	.then(function (status) {
 		return blynk.deleteDashboard(101);	
 	})

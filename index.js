@@ -43,6 +43,9 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					} else {
 						this.rejectConnect(responseCode);
 					}
+				} else if (msgId == this.msgIdDeleteDash) {
+					this.resolveDeleteDash(responseCode);
+					clearTimeout(this.createDashTimeout);
 				} else if (msgId == this.msgIdCreateDash) {
 					if (responseCode == MsgStatus.OK) {
 						this.resolveCreateDash(MsgStatus.OK);
@@ -50,20 +53,35 @@ BlynkAppClient.prototype.connect = function(username, password) {
 						this.rejectCreateDash(responseCode);
 					}
 					clearTimeout(this.createDashTimeout);
+				} else if (msgId == this.msgIdCreateWidget) {
+					if (responseCode == MsgStatus.OK) {
+						this.resolveCreateWidget(MsgStatus.OK);
+					} else {
+						this.rejectCreateWidget(responseCode);
+					}
+					clearTimeout(this.createWidgetTimeout);
+				} else if (msgId == this.msgIdActivate) {
+					this.resolveActivate(responseCode);
+					clearTimeout(this.activateTimeout);
 				} else if (msgId == this.msgIdHardware) {
 					this.rejectHardware(responseCode);
 					clearTimeout(this.hardwareTimeout);
 				}
 				break;
 			case MsgType.HARDWARE:
-				var resp = data.toString('utf8', 5);
-				var fields = resp.split('\0');
 				if (msgId == this.msgIdHardware) {
+					var resp = data.toString('utf8', 5);
+					var fields = resp.split('\0');
 					this.resolveHardware(fields);
-				} else {
-					this.rejectHardware("Wrong msgId");
+					clearTimeout(this.hardwareTimeout);
 				}
-				clearTimeout(this.hardwareTimeout);
+				break;
+			case MsgType.GET_TOKEN:
+				if (msgId == this.msgIdGetToken) {
+					var resp = data.toString('utf8', 5);
+					this.resolveGetToken(resp);
+					clearTimeout(this.getTokenTimeout);
+				}
 				break;
 			default:
 				console.log("Response raw data: " + data);
@@ -75,7 +93,21 @@ BlynkAppClient.prototype.connect = function(username, password) {
 	}.bind(this));
 	return p;
 }
-
+BlynkAppClient.prototype.deleteDashboard = function(dashboardId) {
+	var command = "deleteDash " + dashboardId;
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveDeleteDash = resolve;
+		that.rejectDeleteDash = reject;
+		that.msgIdDeleteDash = that.msgId;
+		that.send(command);
+		that.deleteDashTimeout = setTimeout(function () {
+			reject("deleteDashboard timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
 BlynkAppClient.prototype.createDashboard = function(dashboardId, name) {
 	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\" }";
 	var that = this;
@@ -86,6 +118,61 @@ BlynkAppClient.prototype.createDashboard = function(dashboardId, name) {
 		that.send(command);
 		that.createDashTimeout = setTimeout(function () {
 			reject("createDashboard timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
+BlynkAppClient.prototype.createWidget = function(dashboardId, widgetId, x, y, label, widgetType, pinType, pin) {
+	var command = 	"createWidget " + dashboardId +
+					"\0{\"id\":" + widgetId +
+					", \"x\":" + x +
+					", \"y\":" + y + 
+					", \"label\":\"" + label +
+					"\", \"type\":\"" + widgetType +
+					"\", \"pinType\":\"" + pinType +
+					"\", \"pin\":" + pin +
+					", \"frequency\":1" +
+					"}";
+
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveCreateWidget = resolve;
+		that.rejectCreateWidget = reject;
+		that.msgIdCreateWidget = that.msgId;
+		that.send(command);
+		that.createWidgetTimeout = setTimeout(function () {
+			reject("createWidget timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
+BlynkAppClient.prototype.getToken = function(dashboardId) {
+	var command = "getToken " + dashboardId;
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveGetToken = resolve;
+		that.rejectGetToken = reject;
+		that.msgIdGetToken = that.msgId;
+		that.send(command);
+		that.getTokenTimeout = setTimeout(function () {
+			reject("getToken timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
+BlynkAppClient.prototype.activate = function(dashboardId) {
+	var command = "activate " + dashboardId;
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveActivate = resolve;
+		that.rejectActivate = reject;
+		that.msgIdActivate = that.msgId;
+		that.send(command);
+		that.activateTimeout = setTimeout(function () {
+			reject("activate timeout");
 		}
 		, SEND_TIMEOUT);
 	});
@@ -142,7 +229,9 @@ BlynkAppClient.prototype.createMessage = function(commandAndBody) {
 		hPwd.update(salt, "utf8");			
 		var finalHash = hPwd.digest('base64');			
 		cmdBody = username + "\0" + finalHash;
-	} else {       
+	} else if (cmd == MsgType.CREATE_DASH || cmd == MsgType.CREATE_WIDGET) {
+		cmdBody = commandAndBody.length > 1 ? commandAndBody.slice(1).join(' ') : null;
+	} else{       
 		cmdBody = commandAndBody.length > 1 ? commandAndBody.slice(1).join('\0') : null;
 	}
 	return this.buildBlynkMessage(cmd, this.msgId++, cmdBody);
@@ -172,22 +261,26 @@ BlynkAppClient.prototype.buildBlynkMessage = function(cmd, msgId, cmdBody) {
 var MsgType = {
     RESPONSE      		:  0,
     LOGIN         		:  2,
+	GET_TOKEN			:  5,
     PING          		:  6,
-    ACTIVATE_DASHBOARD	: 7,
+    ACTIVATE_DASHBOARD	:  7,
     TWEET         		:  12,
     EMAIL         		:  13,
     NOTIFY        		:  14,
     BRIDGE        		:  15,
     HW_SYNC       		:  16,
     HW_INFO       		:  17,
-    HARDWARE      		:  20
-    
+    HARDWARE      		:  20,
+	CREATE_DASH			:  21,
+	DELETE_DASH 		:  23,
+	CREATE_WIDGET		:  33
 };
 
 var MsgStatus = {
     OK                    :  200,
     USER_NOT_REGISTERED	  :  3,
     ILLEGAL_COMMAND       :  2,
+    NOT_ALLOWED			  :	 6,
     NO_ACTIVE_DASHBOARD   :  8,
     INVALID_TOKEN         :  9,
     ILLEGAL_COMMAND_BODY  :  11,
@@ -200,8 +293,16 @@ function getCommandByString(cmdString) {
             return MsgType.PING;
         case "login" :
             return MsgType.LOGIN;
+		case "getToken" :
+			return MsgType.GET_TOKEN;
+        case "createDash":
+        	return MsgType.CREATE_DASH;
+        case "deleteDash":
+        	return MsgType.DELETE_DASH;
         case "activate":
         	return MsgType.ACTIVATE_DASHBOARD;
+        case "createWidget":
+        	return MsgType.CREATE_WIDGET;
         case "hardware" :
             return MsgType.HARDWARE;
     }
@@ -224,6 +325,8 @@ function getStatusByCode(statusCode) {
             return "ILLEGAL_COMMAND";
 		case 3 :
 			return "USER_NOT_REGISTERED";
+		case 6 :
+			return "NOT_ALLOWED";
         case 8 :
             return "NO_ACTIVE_DASHBOARD";
         case 9 :

@@ -10,7 +10,7 @@
 const tls = require('tls');
 const fs = require('fs');
 const crypto = require('crypto');
-const HARDWARE_TIMEOUT = 10000;
+const SEND_TIMEOUT = 10000;
 
 function BlynkAppClient(host, port) {
 	this.host = host;
@@ -43,8 +43,16 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					} else {
 						this.rejectConnect(responseCode);
 					}
+				} else if (msgId == this.msgIdCreateDash) {
+					if (responseCode == MsgStatus.OK) {
+						this.resolveCreateDash(MsgStatus.OK);
+					} else {
+						this.rejectCreateDash(responseCode);
+					}
+					clearTimeout(this.createDashTimeout);
 				} else if (msgId == this.msgIdHardware) {
 					this.rejectHardware(responseCode);
+					clearTimeout(this.hardwareTimeout);
 				}
 				break;
 			case MsgType.HARDWARE:
@@ -68,6 +76,21 @@ BlynkAppClient.prototype.connect = function(username, password) {
 	return p;
 }
 
+BlynkAppClient.prototype.createDashboard = function(dashboardId, name) {
+	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\" }";
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveCreateDash = resolve;
+		that.rejectCreateDash = reject;
+		that.msgIdCreateDash = that.msgId;
+		that.send(command);
+		that.createDashTimeout = setTimeout(function () {
+			reject("createDashboard timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
 BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, pinId, pinValue) {
 	var command = "hardware " + dashboardId + " " + pinType + pinCommand + " " + pinId;
 	if (pinValue != undefined)
@@ -84,7 +107,7 @@ BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, p
 			that.hardwareTimeout = setTimeout(function () {
 				reject("Hardware timeout");
 			}
-			, HARDWARE_TIMEOUT);
+			, SEND_TIMEOUT);
 		}
 	});
 	return p;

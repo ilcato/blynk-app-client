@@ -55,6 +55,7 @@ BlynkAppClient.prototype.connect = function(username, password) {
 				} else {
 					this.rejectHardware("Wrong msgId");
 				}
+				clearTimeout(this.hardwareTimeout);
 				break;
 			default:
 				console.log("Response raw data: " + data);
@@ -79,6 +80,12 @@ BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, p
 		that.send(command);
 		if (pinCommand == "w")
 			resolve("done");
+		else {
+			that.hardwareTimeout = setTimeout(function () {
+				reject("Hardware timeout");
+			}
+			, 10000);
+		}
 	});
 	return p;
 }

@@ -7,7 +7,7 @@ FIRST DRAFT
 
 Creating a Dashboard programmatically:
 
-var blynk = require("./index.js").createClient("127.0.0.1", 8443);
+```javascript var blynk = require("./index.js").createClient("127.0.0.1", 8443);
 blynk.connect("USERNAME", "PASSWORD")
 	.then(function (status) {
 		return blynk.deleteDashboard(101);	
@@ -32,10 +32,11 @@ blynk.connect("USERNAME", "PASSWORD")
 		console.log("Error: " + error);
 		process.exit();
 	});
+```
 
 Reading and writing pins (after configuring hardware with the previous token):
 
-var blynk = require("./index.js").createClient("127.0.0.1", 8443);
+```javascriptvar blynk = require("./index.js").createClient("127.0.0.1", 8443);
 blynk.connect("USERNAME", "PASSWORD")
 	.then(function (status) {
 		return blynk.activate(101);
@@ -63,5 +64,5 @@ blynk.connect("USERNAME", "PASSWORD")
 		console.log("Error: " + error);
 		process.exit();
 	});
-
+```
 

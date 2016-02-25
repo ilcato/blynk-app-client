@@ -18,7 +18,7 @@ blynk.connect("USERNAME", "PASSWORD")
 		return blynk.createWidget(101, 1, 0, 0, "Button", "BUTTON", "DIGITAL", "5");	
 	})
 	.then(function (status) {
-		return blynk.createWidget(101, 2, 200, 200, "Display", "DIGIT4_DISPLAY", "DIGITAL", "4");	
+		return blynk.createWidget(101, 2, 1, 0, "Display", "DIGIT4_DISPLAY", "DIGITAL", "4");	
 	})
 	.then(function (status) {
 		return blynk.getToken(101);

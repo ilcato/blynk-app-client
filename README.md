@@ -12,7 +12,7 @@ blynk.connect("USERNAME", "PASSWORD")
 		return blynk.deleteDashboard(101);	
 	})
 	.then(function (status) {
-		return blynk.createDashboard(101, "DashTest");	
+		return blynk.createDashboard(101, "DashTest", "ESP8266");	
 	})
 	.then(function (status) {
 		return blynk.createWidget(101, 1, 0, 0, "Button", "BUTTON", "DIGITAL", "5");	

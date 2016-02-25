@@ -108,8 +108,8 @@ BlynkAppClient.prototype.deleteDashboard = function(dashboardId) {
 	});
 	return p;
 }
-BlynkAppClient.prototype.createDashboard = function(dashboardId, name) {
-	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\" }";
+BlynkAppClient.prototype.createDashboard = function(dashboardId, name, type) {
+	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\"" + ", \"boardType\": \"" + type + "\"}";
 	var that = this;
 	var p = new Promise(function(resolve, reject) {
 		that.resolveCreateDash = resolve;

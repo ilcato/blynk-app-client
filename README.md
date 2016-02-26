@@ -71,7 +71,6 @@ Reading profile:
 ```javascript
 var blynk = require("blynk-app-client").createClient("127.0.0.1", 8443);
 blynk.connect("USERNAME", "PASSWORD")
-blynk.connect("andrea.catozzi@gmail.com", "1tehran")
 	.then(function (status) {
 		return blynk.loadProfileGzipped();	
 //		return blynk.loadProfileGzipped(101);	// for getting only dashboard 101

@@ -8,7 +8,7 @@
 'use strict';
 
 const tls = require('tls');
-const fs = require('fs');
+const zlib = require('zlib');
 const crypto = require('crypto');
 const SEND_TIMEOUT = 10000;
 
@@ -66,6 +66,9 @@ BlynkAppClient.prototype.connect = function(username, password) {
 				} else if (msgId == this.msgIdHardware) {
 					this.rejectHardware(responseCode);
 					clearTimeout(this.hardwareTimeout);
+				} else if (msgId == this.msgIdLoadProfileGzipped) {
+					this.rejectLoadProfileGzipped(responseCode);
+					clearTimeout(this.loadProfileGzippedTimeout);
 				}
 				break;
 			case MsgType.HARDWARE:
@@ -81,6 +84,22 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					var resp = data.toString('utf8', 5);
 					this.resolveGetToken(resp);
 					clearTimeout(this.getTokenTimeout);
+				}
+				break;
+			case MsgType.LOAD_PROFILE_GZIPPED:
+				if (msgId == this.msgIdLoadProfileGzipped) {
+					var buf = new Buffer(data.length - 5);
+					data.copy(buf, 0, 5);
+					zlib.unzip(buf, (err, buffer) => {
+						  if (!err) {
+						    console.log(buffer.toString());
+							var resp = buffer.toString('utf8');
+							this.resolveLoadProfileGzipped(resp);
+						  } else {
+							this.rejectLoadProfileGzipped(err);
+						  }
+					});
+					clearTimeout(this.loadProfileGzippedTimeout);
 				}
 				break;
 			default:
@@ -199,6 +218,23 @@ BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, p
 	});
 	return p;
 }
+BlynkAppClient.prototype.loadProfileGzipped = function(dashboardId) {
+	var command = "loadprofilegzipped";
+	if (dashboardId != undefined)
+		command = command + " " + dashboardId;
+	var that = this;
+	var p = new Promise(function(resolve, reject) {
+		that.resolveLoadProfileGzipped = resolve;
+		that.rejectLoadProfileGzipped = reject;
+		that.msgIdLoadProfileGzipped = that.msgId;
+		that.send(command);
+		that.loadProfileGzippedTimeout = setTimeout(function () {
+			reject("loadProfileGzipped timeout");
+		}
+		, SEND_TIMEOUT);
+	});
+	return p;
+}
 
 BlynkAppClient.prototype.close = function() {
 	
@@ -271,6 +307,7 @@ var MsgType = {
     HW_SYNC       		:  16,
     HW_INFO       		:  17,
     HARDWARE      		:  20,
+    LOAD_PROFILE_GZIPPED:  24,
 	CREATE_DASH			:  21,
 	DELETE_DASH 		:  23,
 	CREATE_WIDGET		:  33
@@ -305,6 +342,8 @@ function getCommandByString(cmdString) {
         	return MsgType.CREATE_WIDGET;
         case "hardware" :
             return MsgType.HARDWARE;
+        case "loadprofilegzipped" :
+        	return MsgType.LOAD_PROFILE_GZIPPED;
     }
 }
 

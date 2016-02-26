@@ -92,7 +92,6 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					data.copy(buf, 0, 5);
 					zlib.unzip(buf, (err, buffer) => {
 						  if (!err) {
-						    console.log(buffer.toString());
 							var resp = buffer.toString('utf8');
 							this.resolveLoadProfileGzipped(resp);
 						  } else {

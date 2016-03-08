@@ -16,89 +16,67 @@ function BlynkAppClient(host, port) {
 	this.host = host;
 	this.port = port;
 	this.msgId = 1;
+	this.respPromises = [];
 }
 
 BlynkAppClient.prototype.connect = function(username, password) {
 	this.options = {
   		rejectUnauthorized: false
 	};
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveConnect = resolve;
-		that.rejectConnect = reject;
-		that.msgIdConnect = that.msgId;
-		that.socket = tls.connect(that.port, that.host, that.options, () => {
-				that.send("login " + username + " " + password);
-			}
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.socket = tls.connect(this.port, this.host, this.options, () => {
+				this.send("login " + username + " " + password);
+			}.bind(this)
 		);
-	});
+		this.respPromises[msgId].timeout = setTimeout(function () {
+			reject("connect timeout");
+		}
+		, SEND_TIMEOUT);
+
+	}.bind(this));
 	this.socket.on('data', function(data) {
 		var msgId = data.readUInt16BE(1);
+		var r =	this.respPromises[msgId];
 		switch (data[0]) {
 			case MsgType.RESPONSE:
 				var responseCode = data.readUInt16BE(3);
-				if (msgId == this.msgIdConnect) {
-					if (responseCode == MsgStatus.OK) {
-						this.resolveConnect(MsgStatus.OK);
-					} else {
-						this.rejectConnect(responseCode);
-					}
-				} else if (msgId == this.msgIdDeleteDash) {
-					this.resolveDeleteDash(responseCode);
-					clearTimeout(this.createDashTimeout);
-				} else if (msgId == this.msgIdCreateDash) {
-					if (responseCode == MsgStatus.OK) {
-						this.resolveCreateDash(MsgStatus.OK);
-					} else {
-						this.rejectCreateDash(responseCode);
-					}
-					clearTimeout(this.createDashTimeout);
-				} else if (msgId == this.msgIdCreateWidget) {
-					if (responseCode == MsgStatus.OK) {
-						this.resolveCreateWidget(MsgStatus.OK);
-					} else {
-						this.rejectCreateWidget(responseCode);
-					}
-					clearTimeout(this.createWidgetTimeout);
-				} else if (msgId == this.msgIdActivate) {
-					this.resolveActivate(responseCode);
-					clearTimeout(this.activateTimeout);
-				} else if (msgId == this.msgIdHardware) {
-					this.rejectHardware(responseCode);
-					clearTimeout(this.hardwareTimeout);
-				} else if (msgId == this.msgIdLoadProfileGzipped) {
-					this.rejectLoadProfileGzipped(responseCode);
-					clearTimeout(this.loadProfileGzippedTimeout);
-				}
+				r.resolve(responseCode);
+				clearTimeout(r.timeout);
 				break;
 			case MsgType.HARDWARE:
-				if (msgId == this.msgIdHardware) {
+				if (r != undefined) {
 					var resp = data.toString('utf8', 5);
 					var fields = resp.split('\0');
-					this.resolveHardware(fields);
-					clearTimeout(this.hardwareTimeout);
+					r.resolve(fields);
+					clearTimeout(r.timeout);
+					this.respPromises.splice(msgId, 1);
 				}
 				break;
 			case MsgType.GET_TOKEN:
-				if (msgId == this.msgIdGetToken) {
+				if (r != undefined) {
 					var resp = data.toString('utf8', 5);
-					this.resolveGetToken(resp);
-					clearTimeout(this.getTokenTimeout);
+					r.resolve(resp);
+					clearTimeout(r.timeout);
 				}
 				break;
 			case MsgType.LOAD_PROFILE_GZIPPED:
-				if (msgId == this.msgIdLoadProfileGzipped) {
+				if (r != undefined) {
 					var buf = new Buffer(data.length - 5);
 					data.copy(buf, 0, 5);
 					zlib.unzip(buf, (err, buffer) => {
 						  if (!err) {
 							var resp = buffer.toString('utf8');
-							this.resolveLoadProfileGzipped(resp);
+							r.resolve(resp);
 						  } else {
-							this.rejectLoadProfileGzipped(err);
+							r.reject(err);
 						  }
 					});
-					clearTimeout(this.loadProfileGzippedTimeout);
+					clearTimeout(r.timeout);
 				}
 				break;
 			case MsgType.SYNC:
@@ -115,32 +93,34 @@ BlynkAppClient.prototype.connect = function(username, password) {
 }
 BlynkAppClient.prototype.deleteDashboard = function(dashboardId) {
 	var command = "deleteDash " + dashboardId;
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveDeleteDash = resolve;
-		that.rejectDeleteDash = reject;
-		that.msgIdDeleteDash = that.msgId;
-		that.send(command);
-		that.deleteDashTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("deleteDashboard timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.createDashboard = function(dashboardId, name, type) {
 	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\"" + ", \"boardType\": \"" + type + "\"}";
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveCreateDash = resolve;
-		that.rejectCreateDash = reject;
-		that.msgIdCreateDash = that.msgId;
-		that.send(command);
-		that.createDashTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("createDashboard timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.createWidget = function(dashboardId, widgetId, x, y, label, widgetType, pinType, pin) {
@@ -155,91 +135,94 @@ BlynkAppClient.prototype.createWidget = function(dashboardId, widgetId, x, y, la
 					", \"frequency\":1" +
 					"}";
 
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveCreateWidget = resolve;
-		that.rejectCreateWidget = reject;
-		that.msgIdCreateWidget = that.msgId;
-		that.send(command);
-		that.createWidgetTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("createWidget timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.getToken = function(dashboardId) {
 	var command = "getToken " + dashboardId;
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveGetToken = resolve;
-		that.rejectGetToken = reject;
-		that.msgIdGetToken = that.msgId;
-		that.send(command);
-		that.getTokenTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("getToken timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.activate = function(dashboardId) {
 	var command = "activate " + dashboardId;
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveActivate = resolve;
-		that.rejectActivate = reject;
-		that.msgIdActivate = that.msgId;
-		that.send(command);
-		that.activateTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("activate timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, pinId, pinValue) {
 	var command = "hardware " + dashboardId + " " + pinType + pinCommand + " " + pinId;
 	if (pinValue != undefined)
 		command = command + " " + pinValue;
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveHardware = resolve;
-		that.rejectHardware = reject;
-		that.msgIdHardware = that.msgId;
-		that.send(command);
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
 		if (pinCommand == "w")
 			resolve("done");
 		else {
-			that.hardwareTimeout = setTimeout(function () {
-				reject("Hardware timeout");
+			this.respPromises[msgId].timeout = setTimeout(function () {
+				reject("Hardware timeout: " + pinType+pinCommand + pinId + (pinValue != undefined ? pinValue : ""));
 			}
 			, SEND_TIMEOUT);
 		}
-	});
+	}.bind(this));
 	return p;
 }
 BlynkAppClient.prototype.loadProfileGzipped = function(dashboardId) {
 	var command = "loadprofilegzipped";
 	if (dashboardId != undefined)
 		command = command + " " + dashboardId;
-	var that = this;
 	var p = new Promise(function(resolve, reject) {
-		that.resolveLoadProfileGzipped = resolve;
-		that.rejectLoadProfileGzipped = reject;
-		that.msgIdLoadProfileGzipped = that.msgId;
-		that.send(command);
-		that.loadProfileGzippedTimeout = setTimeout(function () {
+		var msgId = this.msgId;
+		this.respPromises[msgId] = {
+			"resolve": resolve,
+			"reject": reject
+		};
+		this.send(command);
+		this.respPromises[msgId].timeout = setTimeout(function () {
 			reject("loadProfileGzipped timeout");
 		}
 		, SEND_TIMEOUT);
-	});
+	}.bind(this));
 	return p;
 }
 
 BlynkAppClient.prototype.close = function() {
-	
-
 }
 
 BlynkAppClient.prototype.send = function(data) {

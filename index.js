@@ -101,6 +101,8 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					clearTimeout(this.loadProfileGzippedTimeout);
 				}
 				break;
+			case MsgType.SYNC:
+				break;
 			default:
 				console.log("Response raw data: " + data);
 				break;
@@ -307,6 +309,7 @@ var MsgType = {
     HW_INFO       		:  17,
     HARDWARE      		:  20,
     LOAD_PROFILE_GZIPPED:  24,
+ 	SYNC				:  25,
 	CREATE_DASH			:  21,
 	DELETE_DASH 		:  23,
 	CREATE_WIDGET		:  33

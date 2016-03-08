@@ -1,6 +1,6 @@
 {
   "name": "blynk-app-client",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Node.js module for accessing Blynk server through the App interface",
   "main": "index.js",
   "scripts": {

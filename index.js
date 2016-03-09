@@ -16,7 +16,7 @@ function BlynkAppClient(host, port) {
 	this.host = host;
 	this.port = port;
 	this.msgId = 1;
-	this.respPromises = [];
+	this.respPromises = new Map();
 }
 
 BlynkAppClient.prototype.connect = function(username, password) {
@@ -25,15 +25,15 @@ BlynkAppClient.prototype.connect = function(username, password) {
 	};
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.socket = tls.connect(this.port, this.host, this.options, () => {
 				this.send("login " + username + " " + password);
 			}.bind(this)
 		);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("connect timeout");
 		}
 		, SEND_TIMEOUT);
@@ -41,7 +41,7 @@ BlynkAppClient.prototype.connect = function(username, password) {
 	}.bind(this));
 	this.socket.on('data', function(data) {
 		var msgId = data.readUInt16BE(1);
-		var r =	this.respPromises[msgId];
+		var r =	this.respPromises.get(msgId);
 		switch (data[0]) {
 			case MsgType.RESPONSE:
 				var responseCode = data.readUInt16BE(3);
@@ -54,7 +54,7 @@ BlynkAppClient.prototype.connect = function(username, password) {
 					var fields = resp.split('\0');
 					r.resolve(fields);
 					clearTimeout(r.timeout);
-					this.respPromises.splice(msgId, 1);
+					this.respPromises.delete(msgId);
 				}
 				break;
 			case MsgType.GET_TOKEN:
@@ -95,12 +95,12 @@ BlynkAppClient.prototype.deleteDashboard = function(dashboardId) {
 	var command = "deleteDash " + dashboardId;
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("deleteDashboard timeout");
 		}
 		, SEND_TIMEOUT);
@@ -111,12 +111,12 @@ BlynkAppClient.prototype.createDashboard = function(dashboardId, name, type) {
 	var command = "createDash {\"id\": " + dashboardId + ",  \"name\": \"" + name + "\"" + ", \"boardType\": \"" + type + "\"}";
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.get(msgId).timeout = setTimeout(function () {
 			reject("createDashboard timeout");
 		}
 		, SEND_TIMEOUT);
@@ -137,12 +137,12 @@ BlynkAppClient.prototype.createWidget = function(dashboardId, widgetId, x, y, la
 
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("createWidget timeout");
 		}
 		, SEND_TIMEOUT);
@@ -153,12 +153,12 @@ BlynkAppClient.prototype.getToken = function(dashboardId) {
 	var command = "getToken " + dashboardId;
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("getToken timeout");
 		}
 		, SEND_TIMEOUT);
@@ -169,12 +169,12 @@ BlynkAppClient.prototype.activate = function(dashboardId) {
 	var command = "activate " + dashboardId;
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("activate timeout");
 		}
 		, SEND_TIMEOUT);
@@ -187,15 +187,16 @@ BlynkAppClient.prototype.hardware = function(dashboardId, pinType, pinCommand, p
 		command = command + " " + pinValue;
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
-			"reject": reject
-		};
+			"reject": reject,
+			"command": command
+		});
 		this.send(command);
 		if (pinCommand == "w")
 			resolve("done");
 		else {
-			this.respPromises[msgId].timeout = setTimeout(function () {
+			this.respPromises.get(msgId).timeout = setTimeout(function () {
 				reject("Hardware timeout: " + pinType+pinCommand + pinId + (pinValue != undefined ? pinValue : ""));
 			}
 			, SEND_TIMEOUT);
@@ -209,12 +210,12 @@ BlynkAppClient.prototype.loadProfileGzipped = function(dashboardId) {
 		command = command + " " + dashboardId;
 	var p = new Promise(function(resolve, reject) {
 		var msgId = this.msgId;
-		this.respPromises[msgId] = {
+		this.respPromises.set(msgId, {
 			"resolve": resolve,
 			"reject": reject
-		};
+		});
 		this.send(command);
-		this.respPromises[msgId].timeout = setTimeout(function () {
+		this.respPromises.get(msgId).timeout = setTimeout(function () {
 			reject("loadProfileGzipped timeout");
 		}
 		, SEND_TIMEOUT);
